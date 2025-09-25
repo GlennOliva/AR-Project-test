@@ -59,22 +59,36 @@
     <a-entity camera></a-entity>
   </a-scene>
 
- <script>
+<script>
   const model = document.querySelector('#cakeModel');
   model.addEventListener("model-loaded", () => {
     console.log("✅ Cake model loaded successfully!");
 
     const mesh = model.getObject3D("mesh");
     if (mesh) {
+      const texture = new THREE.TextureLoader().load(
+        "assets/gltf_embedded_0.jpeg",
+        () => console.log("✅ Texture loaded!"),
+        undefined,
+        (err) => console.error("❌ Texture failed:", err)
+      );
+
+      texture.encoding = THREE.sRGBEncoding; // ✅ important for mobile
+
       mesh.traverse((node) => {
         if (node.isMesh) {
-          node.material.map = new THREE.TextureLoader().load("assets/gltf_embedded_0.jpeg");
+          node.material = new THREE.MeshStandardMaterial({
+            map: texture,
+            roughness: 0.7,
+            metalness: 0.1
+          });
           node.material.needsUpdate = true;
         }
       });
     }
   });
 </script>
+
 
 </body>
 </html>
