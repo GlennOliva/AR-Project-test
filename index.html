@@ -1,70 +1,91 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-    <title>Cake WebXR AR</title>
-
-    <!-- ✅ Only ONE A-Frame build -->
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cake WebXR AR – No Plugin</title>
 <script src="https://aframe.io/releases/1.4.1/aframe.min.js"></script>
+<style>
+  html,body { margin:0; height:100%; overflow:hidden; }
+  a-scene { width:100vw; height:100vh; }
+</style>
+</head>
+<body>
 
-<!-- ✅ Your hit-test/light-estimation helper -->
-<script src="https://cdn.jsdelivr.net/gh/chenzlabs/aframe-xr@main/aframe-xr-hit-test.js"></script>
+<a-scene
+    vr-mode-ui="enabled:false"
+    embedded
+    renderer="colorManagement:true;physicallyCorrectLights:true"
+    webxr="optionalFeatures: hit-test, light-estimation">
+    
+  <!-- Reticle: we’ll position this with JS -->
+  <a-entity id="reticle"
+            geometry="primitive: ring; radiusInner:0.08; radiusOuter:0.1"
+            material="color: yellow; shader: flat; opacity:0.8"
+            visible="false">
+  </a-entity>
 
-    <style>
-      html,body { margin:0; height:100%; overflow:hidden; }
-      a-scene { width:100vw; height:100vh; }
-    </style>
-  </head>
-  <body>
-    <!-- 🔹 WebXR AR Scene -->
-    <a-scene
-      vr-mode-ui="enabled: false"
-      embedded
-      xrweb="mode: ar; optionalFeatures: hit-test, light-estimation;"
-       renderer="colorManagement: true; physicallyCorrectLights: true">
-      
-      <!-- Real-world camera + hit test reticle -->
-      <a-entity id="reticle"
-                geometry="primitive: ring; radiusInner:0.08; radiusOuter:0.1"
-                material="color: yellow; shader: flat; opacity:0.8"
-                xr-hit-test="target:#cakeModel; autoPlace: false"
-                visible="false">
-      </a-entity>
+  <a-entity id="cakeModel"
+            visible="false"
+            scale="3 3 3"
+            gltf-model="url(assets/cake.glb)">
+  </a-entity>
 
-      <!-- Cake model (initially invisible until placed) -->
-      <a-entity id="cakeModel"
-                visible="false"
-                scale="3 3 3"
-                gltf-model="url(assets/cake.glb)">
-      </a-entity>
-
-      <!-- Environment light estimation -->
-      <a-light type="ambient" intensity="1" xr-light-estimation></a-light>
-
-      <a-camera></a-camera>
-    </a-scene>
+  <a-light type="ambient" intensity="1"></a-light>
+  <a-camera></a-camera>
+</a-scene>
 
 <script>
-  const scene = document.querySelector('a-scene');
-  const cake  = document.querySelector('#cakeModel');
-  const reticle = document.querySelector('#reticle');
+const scene = document.querySelector('a-scene');
+const reticle = document.querySelector('#reticle');
+const cake    = document.querySelector('#cakeModel');
 
-  // Wait until the scene is fully initialized
-  scene.addEventListener('loaded', () => {
-    scene.renderer.outputEncoding = THREE.sRGBEncoding;
-  });
+scene.addEventListener('loaded', () => {
+  scene.renderer.outputEncoding = THREE.sRGBEncoding;
+});
 
-  scene.addEventListener('click', () => {
-    if (reticle.visible) {
-      // Place the cake where the reticle is
-      cake.setAttribute('position', reticle.getAttribute('position'));
-      cake.setAttribute('rotation', reticle.getAttribute('rotation'));
-      cake.setAttribute('visible', 'true');
-    }
+// ---- Native WebXR hit-test ----
+scene.renderer.xr.addEventListener('sessionstart', () => {
+  const session = scene.renderer.xr.getSession();
+
+  session.requestReferenceSpace('viewer').then(viewerSpace => {
+    session.requestHitTestSource({space: viewerSpace}).then(source => {
+
+      session.requestReferenceSpace('local').then(localSpace => {
+        scene.renderer.setAnimationLoop((time, frame) => {
+          if (!frame) return;
+
+          const hitTestResults = frame.getHitTestResults(source);
+          if (hitTestResults.length) {
+            const pose = hitTestResults[0].getPose(localSpace);
+            reticle.object3D.visible = true;
+            reticle.object3D.position.set(
+              pose.transform.position.x,
+              pose.transform.position.y,
+              pose.transform.position.z
+            );
+            reticle.object3D.quaternion.set(
+              pose.transform.orientation.x,
+              pose.transform.orientation.y,
+              pose.transform.orientation.z,
+              pose.transform.orientation.w
+            );
+          }
+        });
+      });
+
+    });
   });
+});
+
+// ---- Tap to place cake ----
+scene.addEventListener('click', () => {
+  if (reticle.object3D.visible) {
+    cake.setAttribute('position', reticle.getAttribute('position'));
+    cake.setAttribute('rotation', reticle.getAttribute('rotation'));
+    cake.setAttribute('visible', 'true');
+  }
+});
 </script>
-
-  </body>
+</body>
 </html>
