@@ -1,94 +1,64 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-  <title>Cake AR</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+    <title>Cake WebXR AR</title>
 
-  <!-- A-Frame -->
-  <script src="https://aframe.io/releases/1.4.1/aframe.min.js"></script>
-  <!-- AR.js -->
-  <script src="https://cdn.rawgit.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <!-- A-Frame -->
+    <script src="https://aframe.io/releases/1.4.1/aframe.min.js"></script>
+    <!-- Hit-test + Light-estimation helpers -->
+    <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@master/dist/aframe-master.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/chenzlabs/aframe-xr@main/aframe-xr-hit-test.js"></script>
 
-  <style>
-    /* Make AR scene fill entire screen */
-    body, html {
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      height: 100%;
-      width: 100%;
-    }
+    <style>
+      html,body { margin:0; height:100%; overflow:hidden; }
+      a-scene { width:100vw; height:100vh; }
+    </style>
+  </head>
+  <body>
+    <!-- 🔹 WebXR AR Scene -->
+    <a-scene
+      vr-mode-ui="enabled: false"
+      embedded
+      xrweb="mode: ar; optionalFeatures: hit-test, light-estimation;"
+      renderer="colorManagement: true; physicallyCorrectLights: true; outputEncoding: sRGBEncoding">
+      
+      <!-- Real-world camera + hit test reticle -->
+      <a-entity id="reticle"
+                geometry="primitive: ring; radiusInner:0.08; radiusOuter:0.1"
+                material="color: yellow; shader: flat; opacity:0.8"
+                xr-hit-test="target:#cakeModel; autoPlace: false"
+                visible="false">
+      </a-entity>
 
-    a-scene {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-    }
-  </style>
-</head>
-<body>
-  <!-- Fullscreen AR Scene -->
-  <a-scene
-    embedded
-    arjs="trackingMethod: best; sourceType: webcam;"
-    renderer="colorManagement: true; physicallyCorrectLights: true; outputEncoding: sRGBEncoding; exposure: 1.5"
-    vr-mode-ui="enabled: false"
-    device-orientation-permission-ui="enabled: false">
+      <!-- Cake model (initially invisible until placed) -->
+      <a-entity id="cakeModel"
+                visible="false"
+                scale="3 3 3"
+                gltf-model="url(assets/cake.glb)">
+      </a-entity>
 
-    <!-- Marker (Hiro) -->
-    <a-marker preset="hiro">
-      <!-- Cake Model -->
-<a-entity id="cakeModel"
-  gltf-model="url(assets/cake.glb)" 
-  scale="3 3 3"
-  position="0 0.5 0"
-  material="src: url(assets/gltf_embedded_0.jpeg);"
-></a-entity>
+      <!-- Environment light estimation -->
+      <a-light type="ambient" intensity="1" xr-light-estimation></a-light>
 
-    </a-marker>
+      <a-camera></a-camera>
+    </a-scene>
 
-    <!-- Lights -->
-    <a-entity light="type: ambient; intensity: 2; color: #ffffff"></a-entity>
-    <a-entity light="type: directional; position: 0 4 2; intensity: 2; color: #ffffff"></a-entity>
-    <a-entity light="type: hemisphere; intensity: 1.2; color: #ffffff; groundColor: #888888"></a-entity>
+    <script>
+      const scene = document.querySelector('a-scene');
+      const cake = document.querySelector('#cakeModel');
+      const reticle = document.querySelector('#reticle');
 
-    <!-- Camera -->
-    <a-entity camera></a-entity>
-  </a-scene>
-
-<script>
-  const model = document.querySelector('#cakeModel');
-  model.addEventListener("model-loaded", () => {
-    console.log("✅ Cake model loaded successfully!");
-
-    const mesh = model.getObject3D("mesh");
-    if (mesh) {
-      const texture = new THREE.TextureLoader().load(
-        "assets/gltf_embedded_0.jpeg",
-        () => console.log("✅ Texture loaded!"),
-        undefined,
-        (err) => console.error("❌ Texture failed:", err)
-      );
-
-      texture.encoding = THREE.sRGBEncoding; // ✅ important for mobile
-
-      mesh.traverse((node) => {
-        if (node.isMesh) {
-          node.material = new THREE.MeshStandardMaterial({
-            map: texture,
-            roughness: 0.7,
-            metalness: 0.1
-          });
-          node.material.needsUpdate = true;
+      scene.addEventListener('click', () => {
+        if (reticle.visible) {
+          // Place the cake where the reticle is
+          cake.setAttribute('position', reticle.getAttribute('position'));
+          cake.setAttribute('rotation', reticle.getAttribute('rotation'));
+          cake.setAttribute('visible', 'true');
         }
       });
-    }
-  });
-</script>
-
-
-</body>
+    </script>
+  </body>
 </html>
