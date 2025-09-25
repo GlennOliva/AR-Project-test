@@ -23,7 +23,7 @@
       vr-mode-ui="enabled: false"
       embedded
       xrweb="mode: ar; optionalFeatures: hit-test, light-estimation;"
-      renderer="colorManagement: true; physicallyCorrectLights: true; outputEncoding: sRGBEncoding">
+       renderer="colorManagement: true; physicallyCorrectLights: true">
       
       <!-- Real-world camera + hit test reticle -->
       <a-entity id="reticle"
@@ -46,19 +46,25 @@
       <a-camera></a-camera>
     </a-scene>
 
-    <script>
-      const scene = document.querySelector('a-scene');
-      const cake = document.querySelector('#cakeModel');
-      const reticle = document.querySelector('#reticle');
+<script>
+  const scene = document.querySelector('a-scene');
+  const cake  = document.querySelector('#cakeModel');
+  const reticle = document.querySelector('#reticle');
 
-      scene.addEventListener('click', () => {
-        if (reticle.visible) {
-          // Place the cake where the reticle is
-          cake.setAttribute('position', reticle.getAttribute('position'));
-          cake.setAttribute('rotation', reticle.getAttribute('rotation'));
-          cake.setAttribute('visible', 'true');
-        }
-      });
-    </script>
+  // Wait until the scene is fully initialized
+  scene.addEventListener('loaded', () => {
+    scene.renderer.outputEncoding = THREE.sRGBEncoding;
+  });
+
+  scene.addEventListener('click', () => {
+    if (reticle.visible) {
+      // Place the cake where the reticle is
+      cake.setAttribute('position', reticle.getAttribute('position'));
+      cake.setAttribute('rotation', reticle.getAttribute('rotation'));
+      cake.setAttribute('visible', 'true');
+    }
+  });
+</script>
+
   </body>
 </html>
