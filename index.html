@@ -1,107 +1,102 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html>
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cake WebXR AR – Mobile Ready</title>
-<script src="https://aframe.io/releases/1.4.1/aframe.min.js"></script>
-<style>
-  html, body { margin:0; height:100%; overflow:hidden; }
-  a-scene { width:100vw; height:100vh; }
-  #enter-ar { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); padding: 12px 24px; font-size:16px; background:#f90; color:#000; border:none; border-radius:8px; z-index:10; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+  <title>Hello WebXR!</title>
+
+  <!-- three.js -->
+  <script src="https://unpkg.com/three@0.126.0/build/three.js"></script>
+  <script src="https://unpkg.com/three@0.126.0/examples/js/loaders/GLTFLoader.js"></script>
 </head>
 <body>
 
-<button id="enter-ar">Enter AR</button>
-
-<a-scene
-    embedded
-    renderer="colorManagement:true;physicallyCorrectLights:true"
-    webxr="mode: ar; optionalFeatures: hit-test, light-estimation">
-    
-  <!-- Reticle -->
-  <a-entity id="reticle"
-            geometry="primitive: ring; radiusInner:0.08; radiusOuter:0.1"
-            material="color: yellow; shader: flat; opacity:0.8"
-            visible="false">
-  </a-entity>
-
-  <!-- Cake model -->
-  <a-entity id="cakeModel"
-            visible="false"
-            scale="3 3 3"
-            gltf-model="url(assets/cake.glb)">
-  </a-entity>
-
-  <a-light type="ambient" intensity="1"></a-light>
-  <a-camera></a-camera>
-</a-scene>
+<button onclick="activateXR()">Start Hello WebXR</button>
 
 <script>
-const scene = document.querySelector('a-scene');
-const reticle = document.querySelector('#reticle');
-const cake = document.querySelector('#cakeModel');
-const enterARBtn = document.getElementById('enter-ar');
+async function activateXR() {
+  const canvas = document.createElement("canvas");
+  document.body.appendChild(canvas);
+  const gl = canvas.getContext("webgl", { xrCompatible: true });
 
-// Enter AR button click
-enterARBtn.addEventListener('click', () => {
-  if (scene.enterVR) {
-    scene.enterVR(); // Triggers AR session on mobile
-    enterARBtn.style.display = 'none'; // hide button
-  } else {
-    alert('AR not supported on this device/browser.');
-  }
-});
+  const scene = new THREE.Scene();
 
-// Setup hit-test
-scene.addEventListener('loaded', () => {
-  scene.renderer.outputEncoding = THREE.sRGBEncoding;
+  // Cube for debugging (optional)
+  const materials = [
+    new THREE.MeshBasicMaterial({color: 0xff0000}),
+    new THREE.MeshBasicMaterial({color: 0x0000ff}),
+    new THREE.MeshBasicMaterial({color: 0x00ff00}),
+    new THREE.MeshBasicMaterial({color: 0xff00ff}),
+    new THREE.MeshBasicMaterial({color: 0x00ffff}),
+    new THREE.MeshBasicMaterial({color: 0xffff00})
+  ];
+  const cube = new THREE.Mesh(new THREE.BoxBufferGeometry(0.2, 0.2, 0.2), materials);
+  cube.position.set(0, 0, -1);
+  scene.add(cube);
 
-  if (!scene.renderer.xr) {
-    console.warn('WebXR not available on this device/browser.');
-    return;
-  }
-
-  scene.renderer.xr.addEventListener('sessionstart', () => {
-    const session = scene.renderer.xr.getSession();
-
-    session.requestReferenceSpace('viewer').then(viewerSpace => {
-      session.requestHitTestSource({ space: viewerSpace }).then(source => {
-        session.requestReferenceSpace('local').then(localSpace => {
-          scene.renderer.setAnimationLoop((time, frame) => {
-            if (!frame) return;
-            const hitTestResults = frame.getHitTestResults(source);
-            if (hitTestResults.length) {
-              const pose = hitTestResults[0].getPose(localSpace);
-              reticle.object3D.visible = true;
-              reticle.object3D.position.set(
-                pose.transform.position.x,
-                pose.transform.position.y,
-                pose.transform.position.z
-              );
-              reticle.object3D.quaternion.set(
-                pose.transform.orientation.x,
-                pose.transform.orientation.y,
-                pose.transform.orientation.z,
-                pose.transform.orientation.w
-              );
-            }
-          });
-        });
-      });
-    });
+  const renderer = new THREE.WebGLRenderer({
+    alpha: true,
+    preserveDrawingBuffer: true,
+    canvas: canvas,
+    context: gl
   });
-});
+  renderer.autoClear = false;
 
-// Tap to place cake
-scene.addEventListener('click', () => {
-  if (reticle.object3D.visible) {
-    cake.setAttribute('position', reticle.getAttribute('position'));
-    cake.setAttribute('rotation', reticle.getAttribute('rotation'));
-    cake.setAttribute('visible', 'true');
-  }
-});
+  const camera = new THREE.PerspectiveCamera();
+  camera.matrixAutoUpdate = false;
+
+  // Start AR session
+  const session = await navigator.xr.requestSession("immersive-ar");
+  session.updateRenderState({
+    baseLayer: new XRWebGLLayer(session, gl)
+  });
+
+  const referenceSpace = await session.requestReferenceSpace('local');
+
+  // Load your cake model
+  const loader = new THREE.GLTFLoader();
+  let cake;
+  loader.load("assets/cake.glb", function(gltf) {
+    cake = gltf.scene;
+    cake.visible = false; // hide initially
+    scene.add(cake);
+  });
+
+  let reticle;
+  loader.load("assets/reticle.gltf", function(gltf) { // optional reticle
+    reticle = gltf.scene;
+    reticle.visible = false;
+    scene.add(reticle);
+  });
+
+  // AR render loop
+  session.requestAnimationFrame(function onXRFrame(time, frame) {
+    session.requestAnimationFrame(onXRFrame);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, session.renderState.baseLayer.framebuffer);
+
+    const pose = frame.getViewerPose(referenceSpace);
+    if (pose) {
+      const view = pose.views[0];
+      const viewport = session.renderState.baseLayer.getViewport(view);
+      renderer.setSize(viewport.width, viewport.height);
+
+      camera.matrix.fromArray(view.transform.matrix);
+      camera.projectionMatrix.fromArray(view.projectionMatrix);
+      camera.updateMatrixWorld(true);
+
+      renderer.render(scene, camera);
+    }
+  });
+
+  // Tap to place cake
+  window.addEventListener('click', () => {
+    if (cake) {
+      cake.position.set(0, 0, -1); // simple example placement
+      cake.visible = true;
+    }
+  });
+}
 </script>
 
 </body>
