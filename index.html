@@ -11,10 +11,27 @@
 </head>
 <body>
 
-<button onclick="activateXR()">Start Hello WebXR</button>
+<button id="startBtn">Start Hello WebXR</button>
 
 <script>
-async function activateXR() {
+document.getElementById('startBtn').addEventListener('click', async () => {
+  // ✅ Check if WebXR and immersive-ar are available
+  if (!navigator.xr) {
+    console.warn('WebXR API not available in this browser');
+    return;
+  }
+
+  const supported = await navigator.xr.isSessionSupported('immersive-ar');
+  if (!supported) {
+    console.warn('immersive-ar is not supported on this device/browser');
+    return;
+  }
+
+  // start the AR experience
+  startXR();
+});
+
+async function startXR() {
   // 1️⃣ Create canvas + WebGL context compatible with WebXR
   const canvas = document.createElement("canvas");
   document.body.appendChild(canvas);
