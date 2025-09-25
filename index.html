@@ -6,7 +6,7 @@
 <title>Cake WebXR AR – No Plugin</title>
 <script src="https://aframe.io/releases/1.4.1/aframe.min.js"></script>
 <style>
-  html,body { margin:0; height:100%; overflow:hidden; }
+  html, body { margin:0; height:100%; overflow:hidden; }
   a-scene { width:100vw; height:100vh; }
 </style>
 </head>
@@ -18,13 +18,14 @@
     renderer="colorManagement:true;physicallyCorrectLights:true"
     webxr="optionalFeatures: hit-test, light-estimation">
     
-  <!-- Reticle: we’ll position this with JS -->
+  <!-- Reticle -->
   <a-entity id="reticle"
             geometry="primitive: ring; radiusInner:0.08; radiusOuter:0.1"
             material="color: yellow; shader: flat; opacity:0.8"
             visible="false">
   </a-entity>
 
+  <!-- Cake model -->
   <a-entity id="cakeModel"
             visible="false"
             scale="3 3 3"
@@ -38,47 +39,50 @@
 <script>
 const scene = document.querySelector('a-scene');
 const reticle = document.querySelector('#reticle');
-const cake    = document.querySelector('#cakeModel');
+const cake = document.querySelector('#cakeModel');
 
 scene.addEventListener('loaded', () => {
   scene.renderer.outputEncoding = THREE.sRGBEncoding;
-});
 
-// ---- Native WebXR hit-test ----
-scene.renderer.xr.addEventListener('sessionstart', () => {
-  const session = scene.renderer.xr.getSession();
+  // Check if WebXR is available
+  if (!scene.renderer.xr) {
+    console.warn('WebXR not available on this device/browser.');
+    return;
+  }
 
-  session.requestReferenceSpace('viewer').then(viewerSpace => {
-    session.requestHitTestSource({space: viewerSpace}).then(source => {
+  scene.renderer.xr.addEventListener('sessionstart', () => {
+    const session = scene.renderer.xr.getSession();
 
-      session.requestReferenceSpace('local').then(localSpace => {
-        scene.renderer.setAnimationLoop((time, frame) => {
-          if (!frame) return;
+    session.requestReferenceSpace('viewer').then(viewerSpace => {
+      session.requestHitTestSource({ space: viewerSpace }).then(source => {
+        session.requestReferenceSpace('local').then(localSpace => {
+          scene.renderer.setAnimationLoop((time, frame) => {
+            if (!frame) return;
 
-          const hitTestResults = frame.getHitTestResults(source);
-          if (hitTestResults.length) {
-            const pose = hitTestResults[0].getPose(localSpace);
-            reticle.object3D.visible = true;
-            reticle.object3D.position.set(
-              pose.transform.position.x,
-              pose.transform.position.y,
-              pose.transform.position.z
-            );
-            reticle.object3D.quaternion.set(
-              pose.transform.orientation.x,
-              pose.transform.orientation.y,
-              pose.transform.orientation.z,
-              pose.transform.orientation.w
-            );
-          }
+            const hitTestResults = frame.getHitTestResults(source);
+            if (hitTestResults.length) {
+              const pose = hitTestResults[0].getPose(localSpace);
+              reticle.object3D.visible = true;
+              reticle.object3D.position.set(
+                pose.transform.position.x,
+                pose.transform.position.y,
+                pose.transform.position.z
+              );
+              reticle.object3D.quaternion.set(
+                pose.transform.orientation.x,
+                pose.transform.orientation.y,
+                pose.transform.orientation.z,
+                pose.transform.orientation.w
+              );
+            }
+          });
         });
       });
-
     });
   });
 });
 
-// ---- Tap to place cake ----
+// Tap to place cake
 scene.addEventListener('click', () => {
   if (reticle.object3D.visible) {
     cake.setAttribute('position', reticle.getAttribute('position'));
@@ -87,5 +91,6 @@ scene.addEventListener('click', () => {
   }
 });
 </script>
+
 </body>
 </html>
