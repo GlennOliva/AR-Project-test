@@ -3,20 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cake WebXR AR – No Plugin</title>
+<title>Cake WebXR AR – Mobile Ready</title>
 <script src="https://aframe.io/releases/1.4.1/aframe.min.js"></script>
 <style>
   html, body { margin:0; height:100%; overflow:hidden; }
   a-scene { width:100vw; height:100vh; }
+  #enter-ar { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); padding: 12px 24px; font-size:16px; background:#f90; color:#000; border:none; border-radius:8px; z-index:10; }
 </style>
 </head>
 <body>
 
+<button id="enter-ar">Enter AR</button>
+
 <a-scene
-    vr-mode-ui="enabled:false"
     embedded
     renderer="colorManagement:true;physicallyCorrectLights:true"
-    webxr="optionalFeatures: hit-test, light-estimation">
+    webxr="mode: ar; optionalFeatures: hit-test, light-estimation">
     
   <!-- Reticle -->
   <a-entity id="reticle"
@@ -40,11 +42,22 @@
 const scene = document.querySelector('a-scene');
 const reticle = document.querySelector('#reticle');
 const cake = document.querySelector('#cakeModel');
+const enterARBtn = document.getElementById('enter-ar');
 
+// Enter AR button click
+enterARBtn.addEventListener('click', () => {
+  if (scene.enterVR) {
+    scene.enterVR(); // Triggers AR session on mobile
+    enterARBtn.style.display = 'none'; // hide button
+  } else {
+    alert('AR not supported on this device/browser.');
+  }
+});
+
+// Setup hit-test
 scene.addEventListener('loaded', () => {
   scene.renderer.outputEncoding = THREE.sRGBEncoding;
 
-  // Check if WebXR is available
   if (!scene.renderer.xr) {
     console.warn('WebXR not available on this device/browser.');
     return;
@@ -58,7 +71,6 @@ scene.addEventListener('loaded', () => {
         session.requestReferenceSpace('local').then(localSpace => {
           scene.renderer.setAnimationLoop((time, frame) => {
             if (!frame) return;
-
             const hitTestResults = frame.getHitTestResults(source);
             if (hitTestResults.length) {
               const pose = hitTestResults[0].getPose(localSpace);
